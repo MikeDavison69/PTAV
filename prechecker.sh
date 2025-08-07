@@ -2,7 +2,7 @@
 # pc.sh
 #
 # This script is a helpful pre-checker of the requirements of a server BEFORE
-# you attempt to install HSOne or PTAV Server to it.
+# you attempt to install the Fortra Application Hub (FAH) or PTAV Server to it.
 #
 # Run this before installing!
 #
@@ -17,7 +17,7 @@
 #
 #   AUTHOR: Mike Davison
 #     DATE: 31st October 2023
-# REVISION: 1.3
+# REVISION: 1.4
 #
 # CHANGE LOG:
 # DATE      WHO?  WHAT?
@@ -27,6 +27,13 @@
 #                 Updated script to cope with a CentOS install.
 # 31/10/23  MD    Added timedatectl NTP checking for rhel/centos.
 #                 Added counts of checks and summary output.
+# 17/07/25	MD    Fix for RHEL version (Now only support 8 and 9).
+#			      Fix for checking memory (Just under 8Gb).
+#                 Removed Java checks as no longer required.
+#                 Changed whereis to use 'whereis -b' to look for binaries only.
+#                 Added section for DNS resolution using dig (preferred).
+#                   If dig is not available, we'll try using nslookup.
+#
 #
 ##################################################################################
 
@@ -150,14 +157,17 @@ Check what is the OS release?
 ########################################################
 result=`cat /etc/os-release | egrep ^VERSION_ID|sed -e 's/\./ /g' -e 's/"/ /g'|awk '{print $2}'`
 print_result
-[[ $result -ge 7 ]] && pass || fail
+[[ $result -ge 8 ]] && pass || fail
 
 ########################################################
 Check is there enough memory?
 ########################################################
-result=`free -g | egrep ^Mem:|awk '{print $2}'`
+kilobytes=`free --kilo | egrep ^Mem:|awk '{print $2}'`
+result=$(echo "scale=2; $kilobytes / 1048576" | bc)
 print_result
-[[ $result -ge 8 ]] && pass || fail
+[[ $(echo "$result > 7.8" | bc -l) ]] && pass || fail
+
+#[[ $result -ge 8 ]] && pass || fail
 
 ########################################################
 Check Sufficent CPUs?
@@ -263,18 +273,74 @@ if [ -f /etc/environment ]
 fi
 
 ########################################################
-Check nslookup executable:
+Check dig executable
 ########################################################
+dig=1
 nslookup=1
-result=`whereis nslookup | awk '{print $2}'`
+result=`whereis -b dig | awk '{print $2}'`
 print_result
-#[[ $result = /usr/bin/nslookup ]] && pass || nslookup=0;fail
-if [ "$result" = "/usr/bin/nslookup" ]
+if [ "$result" = "/usr/bin/dig" ]
    then pass
-   else nslookup=0
-        fail
+        nslookup=0
+   else checked
+        dig=0
 fi
-check_software bind-utils
+
+if [ $dig -ne 0 ]
+   then
+        ########################################################
+        Check DNS lookup to update.nai.com:
+        ########################################################
+        result=`dig update.nai.com +short | wc -l`
+		echo "$result results found" | tee -a $logfile
+        print_result
+        [[ $result -ge 1 ]] && pass || fail
+
+        ########################################################
+        Check DNS lookup to S3.amazonaws:
+        ########################################################
+        result=`dig s3.amazonaws.com +short | wc -l`
+		echo "$result results found" | tee -a $logfile
+        print_result
+        [[ $result -ge 1 ]] && pass || fail
+
+        ########################################################
+        Check DNS lookup to Helpsystems:
+        ########################################################
+        result=`dig download.helpsystems.com +short | wc -l`
+		echo "$result results found" | tee -a $logfile
+        print_result
+        [[ $result -ge 1 ]] && pass || fail
+
+        ########################################################
+        Check DNS lookup to Helpsystems:
+        ########################################################
+        result=`dig helpsystems.com +short | wc -l`
+		echo "$result results found" | tee -a $logfile
+        print_result
+        [[ $result -ge 1 ]] && pass || fail
+   else message dig checks bypassed.
+fi
+
+########################################################
+# Only check DNS using nslookup if dig is not available
+########################################################   
+if [ $nslookup -ne 0 ]
+then
+	########################################################
+	Check nslookup executable:
+	########################################################
+	nslookup=1
+	result=`whereis -b nslookup | awk '{print $2}'`
+	print_result
+	#[[ $result = /usr/bin/nslookup ]] && pass || nslookup=0;fail
+	if [ "$result" = "/usr/bin/nslookup" ]
+	then pass
+	else nslookup=0
+	     checked
+	fi
+	check_software bind-utils
+fi
 
 ########################################################
 #Run nslookup commands if nslookup is available
@@ -312,21 +378,22 @@ then
         rc=$?
         print_result
         [[ $rc -eq 0 ]] && pass || fail
-   else message nslookup checks bypassed.
+   else [[ $dig = 0 ]] && message nslookup checks bypassed.
 fi
+
 
 ########################################################
 Check nmap executable:
 #######################################################
-result=`whereis nmap | awk '{print $2}'`
+result=`whereis -b nmap | awk '{print $2}'`
 print_result
-[[ $result = /usr/bin/nmap ]] && pass || fail
+[[ $result = /usr/bin/nmap ]] && pass || checked
 check_software nmap
 
 ########################################################
 Check openssl executable:
 ########################################################
-result=`whereis openssl | awk '{print $2}'`
+result=`whereis -b openssl | awk '{print $2}'`
 print_result
 [[ $result = /usr/bin/openssl ]] && pass || fail
 check_software openssl
@@ -334,7 +401,7 @@ check_software openssl
 ########################################################
 Check tar executable:
 ########################################################
-result=`whereis tar | awk '{print $2}'`
+result=`whereis -b tar | awk '{print $2}'`
 print_result
 [[ $result = /usr/bin/tar ]] && pass || fail
 check_software tar
@@ -342,7 +409,7 @@ check_software tar
 ########################################################
 Check wget executable:
 ########################################################
-result=`whereis wget | awk '{print $2}'`
+result=`whereis -b wget | awk '{print $2}'`
 print_result
 [[ $result = /usr/bin/wget ]] && pass || fail
 check_software wget
@@ -352,37 +419,7 @@ check_software wget
 ########################################################
 [[ $os_type = "centos" ]] && check_software urw-fonts
 
-########################################################
-Check Java executable:
-########################################################
-java=1
-result=`whereis java | awk '{print $2}'`
-print_result
-#[[ "$result" = "/usr/bin/java" ]] && pass || java=0;fail
-if [ "$result" = "/usr/bin/java" ]
-   then pass
-   else java=0
-        fail
-fi
 
-if [ $java -ne 0 ]
-   then
-        ########################################################
-        Check Java Version:
-        ########################################################
-        java -version 2>&1 | tee -a $logfile
-        print_result;checked
-
-        ########################################################
-        Check What Java packages are installed:
-        ########################################################
-        #check_software java
-        yum list installed | egrep -i ^java | tee -a $logfile
-        rc=$?
-        print_result
-        [[ $rc -eq 0 ]] && pass || fail
-   else message Java checks bypassed
-fi
 
 echo "---------------------------------------------------------------" | tee -a $logfile
 echo "Checks completed" | tee -a $logfile
