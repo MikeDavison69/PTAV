@@ -27,12 +27,12 @@
 #                 Updated script to cope with a CentOS install.
 # 31/10/23  MD    Added timedatectl NTP checking for rhel/centos.
 #                 Added counts of checks and summary output.
-# 17/07/25	MD    Fix for RHEL version (Now only support 8 and 9).
-#			      Fix for checking memory (Just under 8Gb).
+# 17/07/25  MD    Fix for RHEL version (Now only support 8 and 9).
+#                 Fix for checking memory (Just under 8Gb).
 #                 Removed Java checks as no longer required.
 #                 Changed whereis to use 'whereis -b' to look for binaries only.
 #                 Added section for DNS resolution using dig (preferred).
-#                   If dig is not available, we'll try using nslookup.
+#                  - If dig is not available, we'll try using nslookup.
 #
 #
 ##################################################################################
@@ -292,7 +292,7 @@ if [ $dig -ne 0 ]
         Check DNS lookup to update.nai.com:
         ########################################################
         result=`dig update.nai.com +short | wc -l`
-		echo "$result results found" | tee -a $logfile
+        echo "$result results found" | tee -a $logfile
         print_result
         [[ $result -ge 1 ]] && pass || fail
 
@@ -300,7 +300,7 @@ if [ $dig -ne 0 ]
         Check DNS lookup to S3.amazonaws:
         ########################################################
         result=`dig s3.amazonaws.com +short | wc -l`
-		echo "$result results found" | tee -a $logfile
+        echo "$result results found" | tee -a $logfile
         print_result
         [[ $result -ge 1 ]] && pass || fail
 
@@ -308,7 +308,7 @@ if [ $dig -ne 0 ]
         Check DNS lookup to Helpsystems:
         ########################################################
         result=`dig download.helpsystems.com +short | wc -l`
-		echo "$result results found" | tee -a $logfile
+        echo "$result results found" | tee -a $logfile
         print_result
         [[ $result -ge 1 ]] && pass || fail
 
@@ -316,7 +316,7 @@ if [ $dig -ne 0 ]
         Check DNS lookup to Helpsystems:
         ########################################################
         result=`dig helpsystems.com +short | wc -l`
-		echo "$result results found" | tee -a $logfile
+        echo "$result results found" | tee -a $logfile
         print_result
         [[ $result -ge 1 ]] && pass || fail
    else message dig checks bypassed.
