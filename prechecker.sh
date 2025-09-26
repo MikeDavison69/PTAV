@@ -17,7 +17,7 @@
 #
 #   AUTHOR: Mike Davison
 #     DATE: 31st October 2023
-# REVISION: 1.4
+# REVISION: 1.5
 #
 # CHANGE LOG:
 # DATE      WHO?  WHAT?
@@ -33,7 +33,10 @@
 #                 Changed whereis to use 'whereis -b' to look for binaries only.
 #                 Added section for DNS resolution using dig (preferred).
 #                  - If dig is not available, we'll try using nslookup.
-#
+# 22/09/25  MD    Removed nmap check as no longer required (can use openssl)
+#                 Added perl software checks
+#                 Added perl software checks for Rhel 9
+#                 
 #
 ##################################################################################
 
@@ -158,6 +161,7 @@ Check what is the OS release?
 result=`cat /etc/os-release | egrep ^VERSION_ID|sed -e 's/\./ /g' -e 's/"/ /g'|awk '{print $2}'`
 print_result
 [[ $result -ge 8 ]] && pass || fail
+os_ver=$result
 
 ########################################################
 Check is there enough memory?
@@ -381,15 +385,6 @@ then
    else [[ $dig = 0 ]] && message nslookup checks bypassed.
 fi
 
-
-########################################################
-Check nmap executable:
-#######################################################
-result=`whereis -b nmap | awk '{print $2}'`
-print_result
-[[ $result = /usr/bin/nmap ]] && pass || checked
-check_software nmap
-
 ########################################################
 Check openssl executable:
 ########################################################
@@ -419,8 +414,23 @@ check_software wget
 ########################################################
 [[ $os_type = "centos" ]] && check_software urw-fonts
 
+########################################################
+# Checks for Perl
+########################################################
+check_software perl-JSON
+check_software perl-IO-Compress
 
+########################################################
+# Checks for Perl for RHEL 9 only
+########################################################
+if [ $os_type = "rhel" -a $os_ver = 9 ]
+   then check_software perl-File-Find
+        check_software perl-File-Copy
+fi
 
+########################################################
+# Finished, print report
+########################################################
 echo "---------------------------------------------------------------" | tee -a $logfile
 echo "Checks completed" | tee -a $logfile
 echo " " | tee -a $logfile
