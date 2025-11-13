@@ -16,7 +16,7 @@
 # ================================================================================
 #
 #   AUTHOR: Mike Davison
-#     DATE: 13th Novembe5 2023
+#     DATE: 13th November 2023
 # REVISION: 1.6
 #
 # CHANGE LOG:
