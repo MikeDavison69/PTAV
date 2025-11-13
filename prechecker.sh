@@ -16,8 +16,8 @@
 # ================================================================================
 #
 #   AUTHOR: Mike Davison
-#     DATE: 31st October 2023
-# REVISION: 1.5
+#     DATE: 13th Novembe5 2023
+# REVISION: 1.6
 #
 # CHANGE LOG:
 # DATE      WHO?  WHAT?
@@ -36,6 +36,7 @@
 # 22/09/25  MD    Removed nmap check as no longer required (can use openssl)
 #                 Added perl software checks
 #                 Added perl software checks for Rhel 9
+# 13/11/25  MD    Fix for check_software (returning 0 when it should not)
 #                 
 #
 ##################################################################################
@@ -133,7 +134,8 @@ check_software()
 Check $1 is installed:
 ########################################################
 #echo "yum list installed $1*| egrep -i ^$1" | tee -a $logfile
-yum list installed $1*| egrep -i ^$1 | tee -a $logfile
+yum list installed $1*| egrep -i ^$1 >> $logfile
+yum list installed $1*| egrep -i ^$1
 rc=$?
 print_result
 [[ $rc -eq 0 ]] && pass || fail
